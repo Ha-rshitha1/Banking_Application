@@ -4,14 +4,15 @@ import string
 import re
 
 class User:
-    def __init__(self, username, address, aadhar, mobile, balance=0):
+    def __init__(self, username, address, aadhar, mobile):
         self.username = username
         self.address = address
         self.aadhar = aadhar
         self.mobile = mobile
-        self.balance = balance
+        self.balance = 0
         self.credit_card = self.generate_card("Credit")
         self.debit_card = self.generate_card("Debit")
+        self.account_number = self.generate_account_number()
 
     def generate_card(self, card_type):
         # Generate random card details
@@ -19,6 +20,11 @@ class User:
         pin = ''.join(random.choices(string.digits, k=4))
         cvv = ''.join(random.choices(string.digits, k=3))
         return {"type": card_type, "number": card_number, "pin": pin, "cvv": cvv}
+
+    def generate_account_number(self):
+        first_five = "YESB0"
+        last_six = ''.join(random.choices(string.digits[1:], k=6))
+        return first_five + last_six
 
 def register_user():
     # Input validation functions
@@ -63,16 +69,9 @@ def register_user():
         else:
             print("Invalid mobile number. Please enter 10 digits.")
 
-    # Add balance input
-    while True:
-        balance = input("Enter initial balance: ")
-        if balance.isdigit():
-            break
-        else:
-            print("Invalid balance. Please enter a valid number.")
-
-    user = User(username, address, aadhar, mobile, int(balance))  # Convert balance to integer
+    user = User(username, address, aadhar, mobile)  # Initialize balance to 0
     print("Registration successful!")
+    print("Your account number:", user.account_number)
     print("Your credit card details:")
     print("Number:", user.credit_card["number"])
     print("PIN:", user.credit_card["pin"])
@@ -92,14 +91,14 @@ def store_in_mysql(user):
             host="localhost",
             user="root",
             password="Harshi@526",
-            database="Bank_Application"
+            database="Banking"
         )
 
         cursor = connection.cursor()
 
         # Insert user data into the table
-        sql = "INSERT INTO users (username, address, aadhar, mobile, balance, credit_card_number, credit_card_pin, credit_card_cvv, debit_card_number, debit_card_pin, debit_card_cvv) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-        val = (user.username, user.address, user.aadhar, user.mobile, user.balance, user.credit_card["number"], user.credit_card["pin"], user.credit_card["cvv"], user.debit_card["number"], user.debit_card["pin"], user.debit_card["cvv"])
+        sql = "INSERT INTO users (username, address, aadhar, mobile, balance, account_number, credit_card_number, credit_card_pin, credit_card_cvv, debit_card_number, debit_card_pin, debit_card_cvv) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        val = (user.username, user.address, user.aadhar, user.mobile, user.balance, user.account_number, user.credit_card["number"], user.credit_card["pin"], user.credit_card["cvv"], user.debit_card["number"], user.debit_card["pin"], user.debit_card["cvv"])
         cursor.execute(sql, val)
 
         # Commit changes and close connection
