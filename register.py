@@ -1,3 +1,4 @@
+#Register
 import mysql.connector
 import random
 import string
@@ -40,6 +41,9 @@ def register_user():
     def validate_mobile(mobile):
         return re.match(r'^[0-9]{10}$', mobile)
 
+    def validate_password(password):
+        return bool(re.match(r'^[a-zA-Z0-9]{8,}$', password))
+
     # Get valid input from user
     while True:
         username = input("Enter username (alphabets only): ")
@@ -69,6 +73,13 @@ def register_user():
         else:
             print("Invalid mobile number. Please enter 10 digits.")
 
+    while True:
+        password = input("Enter password (minimum 8 characters, alphanumeric only): ")
+        if validate_password(password):
+            break
+        else:
+            print("Invalid password. Password should be at least 8 characters long and contain only alphanumeric characters.")
+
     user = User(username, address, aadhar, mobile)  # Initialize balance to 0
     print("Registration successful!")
     print("Your account number:", user.account_number)
@@ -82,9 +93,10 @@ def register_user():
     print("CVV:", user.debit_card["cvv"])
 
     # Store user data in MySQL
-    store_in_mysql(user)
+    store_in_mysql(user, password)
 
-def store_in_mysql(user):
+
+def store_in_mysql(user, password):
     # Connect to MySQL database
     try:
         connection = mysql.connector.connect(
@@ -97,8 +109,8 @@ def store_in_mysql(user):
         cursor = connection.cursor()
 
         # Insert user data into the table
-        sql = "INSERT INTO users (username, address, aadhar, mobile, balance, account_number, credit_card_number, credit_card_pin, credit_card_cvv, debit_card_number, debit_card_pin, debit_card_cvv) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-        val = (user.username, user.address, user.aadhar, user.mobile, user.balance, user.account_number, user.credit_card["number"], user.credit_card["pin"], user.credit_card["cvv"], user.debit_card["number"], user.debit_card["pin"], user.debit_card["cvv"])
+        sql = "INSERT INTO users (username, address, aadhar, mobile, balance, account_number, password, credit_card_number, credit_card_pin, credit_card_cvv, debit_card_number, debit_card_pin, debit_card_cvv) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        val = (user.username, user.address, user.aadhar, user.mobile, user.balance, user.account_number, password, user.credit_card["number"], user.credit_card["pin"], user.credit_card["cvv"], user.debit_card["number"], user.debit_card["pin"], user.debit_card["cvv"])
         cursor.execute(sql, val)
 
         # Commit changes and close connection
@@ -133,3 +145,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
