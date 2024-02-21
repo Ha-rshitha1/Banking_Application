@@ -210,7 +210,6 @@ def update_account_info(user):
     show_user_info(user)  # Show updated user info
     show_options(user)
 
-
 def transfer_funds(user):
     print("Transfer Funds:")
     recipient_username = input("Enter recipient's username: ")
@@ -232,11 +231,23 @@ def transfer_funds(user):
             print("Recipient not found.")
             return
 
+        # Fetch the list of beneficiaries for the sender's account
+        cursor.execute("SELECT account_number FROM beneficiaries WHERE username = %s", (user.username,))
+        beneficiary_accounts = [row[0] for row in cursor.fetchall()]
+
+        # Check if recipient is a beneficiary
+        cursor.execute("SELECT account_number FROM users WHERE username = %s", (recipient_username,))
+        recipient_account_number = cursor.fetchone()[0]
+        if recipient_account_number not in beneficiary_accounts:
+            print("The recipient is not your beneficiary.")
+            return
+
         # Check if sender has sufficient balance
         if user.balance < amount:
             print("Insufficient funds.")
             return
-             # Update sender's balance
+
+        # Update sender's balance
         cursor.execute("UPDATE users SET balance = balance - %s WHERE username = %s", (amount, user.username))
 
         # Update recipient's balance
@@ -258,6 +269,7 @@ def transfer_funds(user):
             connection.close()
 
     show_options(user)
+
 
 def change_card_pins(user):
     new_pin = input("Enter new PIN for Credit Card: ")
