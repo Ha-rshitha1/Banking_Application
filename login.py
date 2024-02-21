@@ -1,3 +1,4 @@
+#Login
 import mysql.connector
 import random
 import string
@@ -11,6 +12,7 @@ class User:
         self.balance = balance
         self.credit_card = self.generate_card("Credit")
         self.debit_card = self.generate_card("Debit")
+        self.account_number = self.generate_account_number()
 
     def generate_card(self, card_type):
         # Generate random card details
@@ -19,28 +21,33 @@ class User:
         cvv = ''.join(random.choices(string.digits, k=3))
         return {"type": card_type, "number": card_number, "pin": pin, "cvv": cvv}
 
+    def generate_account_number(self):
+        first_five = "YESB0"
+        last_six = ''.join(random.choices(string.digits[1:], k=6))
+        return first_five + last_six
+
 def login_user():
     username = input("Enter username: ")
-    user = fetch_user(username)
+    password = input("Enter password: ")
+    user = fetch_user(username, password)
     if user:
         print("Welcome,", user.username)
-        show_user_info(user)
         show_options(user)
     else:
-        print("User not found.")
+        print("Invalid username or password.")
 
-def fetch_user(username):
+def fetch_user(username, password):
     try:
         connection = mysql.connector.connect(
             host="localhost",
             user="root",
             password="Harshi@526",
-            database="Bank_Application"
+            database="Banking"
         )
         cursor = connection.cursor(dictionary=True)
 
-        sql = "SELECT * FROM users WHERE username = %s"
-        cursor.execute(sql, (username,))
+        sql = "SELECT * FROM users WHERE username = %s AND password = %s"
+        cursor.execute(sql, (username, password))
         user_data = cursor.fetchone()
 
         if user_data:
@@ -57,16 +64,6 @@ def fetch_user(username):
         if connection.is_connected():
             cursor.close()
             connection.close()
-
-def show_user_info(user):
-    print("User Information:")
-    print("Username:", user.username)
-    print("Address:", user.address)
-    print("Aadhar:", user.aadhar)
-    print("Mobile:", user.mobile)
-    print("Balance:", user.balance)
-    print("Credit Card Number:", user.credit_card["number"])
-    print("Debit Card Number:", user.debit_card["number"])
 
 def show_options(user):
     print("\nOptions:")
@@ -104,6 +101,12 @@ def show_options(user):
         print("Invalid choice. Please try again.")
         show_options(user)
 
+def show_user_info(user):
+    print("Account Information:")
+    print("Username:", user.username)
+    print("Account Number:", user.account_number)
+    print("Balance:", user.balance)
+
 def list_beneficiaries(user):
     print("List of Beneficiaries:")
     try:
@@ -111,7 +114,7 @@ def list_beneficiaries(user):
             host="localhost",
             user="root",
             password="Harshi@526",
-            database="Bank_Application"
+            database="Banking"
         )
         cursor = connection.cursor()
 
@@ -150,7 +153,7 @@ def add_beneficiary(user):
             host="localhost",
             user="root",
             password="Harshi@526",
-            database="Bank_Application"
+            database="Banking"
         )
         cursor = connection.cursor()
 
@@ -178,7 +181,7 @@ def update_account_info(user):
             host="localhost",
             user="root",
             password="Harshi@526",
-            database="Bank_Application"
+            database="Banking"
         )
         cursor = connection.cursor()
 
@@ -211,14 +214,14 @@ def update_account_info(user):
 def transfer_funds(user):
     print("Transfer Funds:")
     recipient_username = input("Enter recipient's username: ")
-    amount = float(input("Enter amount to transfer: "))
+    amount = int(input("Enter amount to transfer: "))
 
     try:
         connection = mysql.connector.connect(
             host="localhost",
             user="root",
             password="Harshi@526",
-            database="Bank_Application"
+            database="Banking"
         )
         cursor = connection.cursor()
 
@@ -233,8 +236,7 @@ def transfer_funds(user):
         if user.balance < amount:
             print("Insufficient funds.")
             return
-
-        # Update sender's balance
+             # Update sender's balance
         cursor.execute("UPDATE users SET balance = balance - %s WHERE username = %s", (amount, user.username))
 
         # Update recipient's balance
@@ -257,7 +259,6 @@ def transfer_funds(user):
 
     show_options(user)
 
-
 def change_card_pins(user):
     new_pin = input("Enter new PIN for Credit Card: ")
     # Implement change PIN functionality for credit and debit cards
@@ -268,7 +269,7 @@ def change_card_pins(user):
             host="localhost",
             user="root",
             password="Harshi@526",
-            database="Bank_Application"
+            database="Banking"
         )
         cursor = connection.cursor()
 
