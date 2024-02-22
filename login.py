@@ -22,9 +22,9 @@ class User:
         return {"type": card_type, "number": card_number, "pin": pin, "cvv": cvv}
 
     def generate_account_number(self):
-        first_five = "YESB0"
-        last_six = ''.join(random.choices(string.digits[1:], k=6))
-        return first_five + last_six
+        account_number = ''.join(random.choices(string.digits, k=random.randint(11, 14)))
+        return account_number
+
 
 def login_user():
     username = input("Enter username: ")
@@ -42,7 +42,7 @@ def fetch_user(username, password):
             host="localhost",
             user="root",
             password="Harshi@526",
-            database="Banking"
+            database="Banking_App"
         )
         cursor = connection.cursor(dictionary=True)
 
@@ -77,7 +77,7 @@ def initial_deposit(user):
             host="localhost",
             user="root",
             password="Harshi@526",
-            database="Banking"
+            database="Banking_App"
         )
         cursor = connection.cursor()
 
@@ -122,7 +122,7 @@ def list_beneficiaries(user):
             host="localhost",
             user="root",
             password="Harshi@526",
-            database="Banking"
+            database="Banking_App"
         )
         cursor = connection.cursor()
 
@@ -153,7 +153,7 @@ def list_cards(user):
             host="localhost",
             user="root",
             password="Harshi@526",
-            database="Banking"
+            database="Banking_App"
         )
         cursor = connection.cursor()
 
@@ -170,7 +170,7 @@ def list_cards(user):
         print("Card Number:", user.debit_card["number"])
         print("PIN:", user.debit_card["pin"])
         print("CVV:", user.debit_card["cvv"])
-        print("Cardholder Name:", user.username)
+        #print("Cardholder Name:", user.username)
         print()
 
         # Fetch other registered cards for the user from the cards table
@@ -198,36 +198,45 @@ def list_cards(user):
 
     show_options(user)
 
-
-       
-
-
 def add_beneficiary(user):
     print("Add Beneficiary:")
-    name = input("Enter beneficiary name: ")
-    account_number = input("Enter beneficiary account number: ")
+    while True:
+        name = input("Enter beneficiary name: ")
+        beneficiary_account_number = input("Enter beneficiary account number: ")
 
-    try:
-        connection = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="Harshi@526",
-            database="Banking"
-        )
-        cursor = connection.cursor()
+        try:
+            connection = mysql.connector.connect(
+                host="localhost",
+                user="root",
+                password="Harshi@526",
+                database="Banking_App"
+            )
+            cursor = connection.cursor()
 
-        sql = "INSERT INTO beneficiaries (name, account_number, username) VALUES (%s, %s, %s)"
-        val = (name, account_number, user.username)
-        cursor.execute(sql, val)
-        connection.commit()
-        print("Beneficiary added successfully!")
+            # Check if the beneficiary account number and name match in the users table
+            cursor.execute("SELECT * FROM users WHERE account_number = %s AND username = %s", (beneficiary_account_number, name))
+            beneficiary_data = cursor.fetchone()
+            if beneficiary_data is None:
+                print("Beneficiary account number does not match the provided name.")
+                retry = input("Do you want to retry? (yes/no): ").lower()
+                if retry != 'yes':
+                    break
+                continue
 
-    except mysql.connector.Error as error:
-        print("Error while adding beneficiary:", error)
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
+            # Insert the beneficiary into the beneficiaries table
+            sql = "INSERT INTO beneficiaries (name, account_number, username) VALUES (%s, %s, %s)"
+            val = (name, beneficiary_account_number, user.username)
+            cursor.execute(sql, val)
+            connection.commit()
+            print("Beneficiary added successfully!")
+            break
+
+        except mysql.connector.Error as error:
+            print("Error while adding beneficiary:", error)
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
 
     list_beneficiaries(user)
 
@@ -241,7 +250,7 @@ def update_account_info(user):
             host="localhost",
             user="root",
             password="Harshi@526",
-            database="Banking"
+            database="Banking_App"
         )
         cursor = connection.cursor()
 
@@ -265,52 +274,61 @@ def update_account_info(user):
 
 def transfer_funds(user):
     print("Transfer Funds:")
-    recipient_username = input("Enter recipient's username: ")
-    amount = int(input("Enter amount to transfer: "))
+    while True:
+        recipient_username = input("Enter recipient's username: ")
+        amount = int(input("Enter amount to transfer: "))
 
-    try:
-        connection = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="Harshi@526",
-            database="Banking"
-        )
-        cursor = connection.cursor()
+        try:
+            connection = mysql.connector.connect(
+                host="localhost",
+                user="root",
+                password="Harshi@526",
+                database="Banking_App"
+            )
+            cursor = connection.cursor()
 
-        # Check if recipient exists and is a beneficiary of the sender
-        cursor.execute("SELECT * FROM users WHERE username = %s AND EXISTS (SELECT 1 FROM beneficiaries WHERE username = %s AND account_number = %s)", (recipient_username, user.username, recipient_username))
-        recipient_data = cursor.fetchone()
-        if not recipient_data:
-            print("Recipient not found or not a beneficiary.")
-            return
+            # Check if recipient exists and is a beneficiary of the sender
+            cursor.execute("SELECT * FROM beneficiaries WHERE username = %s AND name = %s", (user.username, recipient_username))
+            recipient_data = cursor.fetchone()
+            if recipient_data is None:
+                print("Recipient not found or not a beneficiary.")
+                retry = input("Do you want to retry? (yes/no): ").lower()
+                if retry != 'yes':
+                    break
+                continue
 
-        # Check if sender has sufficient balance
-        if user.balance < amount:
-            print("Insufficient funds.")
-            return
+            # Check if sender has sufficient balance
+            if user.balance < amount:
+                print("Insufficient funds.")
+                retry = input("Do you want to retry? (yes/no): ").lower()
+                if retry != 'yes':
+                    break
+                continue
 
-        # Update sender's balance
-        cursor.execute("UPDATE users SET balance = balance - %s WHERE username = %s", (amount, user.username))
+            # Update sender's balance
+            cursor.execute("UPDATE users SET balance = balance - %s WHERE username = %s", (amount, user.username))
 
-        # Update recipient's balance
-        cursor.execute("UPDATE users SET balance = balance + %s WHERE username = %s", (amount, recipient_username))
+            # Update recipient's balance
+            cursor.execute("UPDATE users SET balance = balance + %s WHERE username = %s", (amount, recipient_username))
 
-        # Commit the transaction
-        connection.commit()
+            # Commit the transaction
+            connection.commit()
 
-        # Update user object balance
-        user.balance -= amount
+            # Update user object balance
+            user.balance -= amount
 
-        print(f"{amount} funds transferred successfully to {recipient_username}")
+            print(f"{amount} funds transferred successfully to {recipient_username}")
+            break
 
-    except mysql.connector.Error as error:
-        print("Error transferring funds:", error)
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
+        except mysql.connector.Error as error:
+            print("Error transferring funds:", error)
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
 
     show_options(user)
+
 
 def change_card_pins(user):
     new_pin = input("Enter new PIN for Credit Card: ")
@@ -322,7 +340,7 @@ def change_card_pins(user):
             host="localhost",
             user="root",
             password="Harshi@526",
-            database="Banking"
+            database="Banking_App"
         )
         cursor = connection.cursor()
 
@@ -343,7 +361,7 @@ def change_card_pins(user):
 
 def register_new_credit_card(user):
     print("Register New Credit Card:")
-    card_type = input("Enter card type (Credit/Debit): ").capitalize()
+    card_type = input("Enter card type (Credit/Debit): ")
     
     while True:
         card_number = input("Enter 16-digit card number: ")
@@ -371,7 +389,7 @@ def register_new_credit_card(user):
             host="localhost",
             user="root",
             password="Harshi@526",
-            database="Banking"
+            database="Banking_App"
         )
         cursor = connection.cursor()
 
@@ -432,3 +450,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    

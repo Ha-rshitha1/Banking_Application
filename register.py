@@ -1,4 +1,4 @@
-#Register
+#Registrarion code
 import mysql.connector
 import random
 import string
@@ -23,9 +23,9 @@ class User:
         return {"type": card_type, "number": card_number, "pin": pin, "cvv": cvv}
 
     def generate_account_number(self):
-        first_five = "YESB0"
-        last_six = ''.join(random.choices(string.digits[1:], k=6))
-        return first_five + last_six
+        account_number = ''.join(random.choices(string.digits, k=random.randint(11, 14)))
+        return account_number
+
 
 def register_user():
     # Input validation functions
@@ -95,7 +95,6 @@ def register_user():
     # Store user data in MySQL
     store_in_mysql(user, password)
 
-
 def store_in_mysql(user, password):
     # Connect to MySQL database
     try:
@@ -103,14 +102,14 @@ def store_in_mysql(user, password):
             host="localhost",
             user="root",
             password="Harshi@526",
-            database="Banking"
+            database="Banking_App"
         )
 
         cursor = connection.cursor()
 
         # Insert user data into the table
         sql = "INSERT INTO users (username, address, aadhar, mobile, balance, account_number, password, credit_card_number, credit_card_pin, credit_card_cvv, debit_card_number, debit_card_pin, debit_card_cvv) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-        val = (user.username, user.address, user.aadhar, user.mobile, user.balance, user.account_number, password, user.credit_card["number"], user.credit_card["pin"], user.credit_card["cvv"], user.debit_card["number"], user.debit_card["pin"], user.debit_card["cvv"])
+        val = (user.username, user.address, int(user.aadhar), int(user.mobile), user.balance, int(user.account_number), password, int(user.credit_card["number"]), int(user.credit_card["pin"]), int(user.credit_card["cvv"]), int(user.debit_card["number"]), int(user.debit_card["pin"]), int(user.debit_card["cvv"]))
         cursor.execute(sql, val)
 
         # Commit changes and close connection
@@ -145,4 +144,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
