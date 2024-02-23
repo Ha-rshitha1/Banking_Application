@@ -1,7 +1,6 @@
 #Registrarion code
 import mysql.connector
 import random
-import string
 import re
 
 class User:
@@ -17,13 +16,13 @@ class User:
 
     def generate_card(self, card_type):
         # Generate random card details
-        card_number = ''.join(random.choices(string.digits, k=16))
-        pin = ''.join(random.choices(string.digits, k=4))
-        cvv = ''.join(random.choices(string.digits, k=3))
+        card_number = ''.join(random.choices('0123456789', k=16))
+        pin = ''.join(random.choices('0123456789', k=4))
+        cvv = ''.join(random.choices('0123456789', k=3))
         return {"type": card_type, "number": card_number, "pin": pin, "cvv": cvv}
 
     def generate_account_number(self):
-        account_number = ''.join(random.choices(string.digits, k=random.randint(11, 14)))
+        account_number = ''.join(random.choices('0123456789', k=random.randint(11, 14)))
         return account_number
 
 
@@ -33,7 +32,7 @@ def register_user():
         return username.isalpha()
 
     def validate_address(address):
-        return address.isalnum()
+        return bool(re.match(r'^[a-zA-Z0-9\s,-]+$', address))
 
     def validate_aadhar(aadhar):
         return re.match(r'^[0-9]{12}$', aadhar)
@@ -42,7 +41,7 @@ def register_user():
         return re.match(r'^[0-9]{10}$', mobile)
 
     def validate_password(password):
-        return bool(re.match(r'^[a-zA-Z0-9]{8,}$', password))
+        return bool(re.match(r'^[a-zA-Z0-9!@#$%^&*()-_+=]{8,}$', password))
 
     # Get valid input from user
     while True:
@@ -53,11 +52,11 @@ def register_user():
             print("Invalid username. Please enter alphabets only.")
 
     while True:
-        address = input("Enter address (alphanumeric): ")
+        address = input("Enter address (alphanumeric with special characters): ")
         if validate_address(address):
             break
         else:
-            print("Invalid address. Please enter alphanumeric characters only.")
+            print("Invalid address. Please enter alphanumeric characters with special symbols.")
 
     while True:
         aadhar = input("Enter Aadhar number (12 digits): ")
@@ -74,11 +73,11 @@ def register_user():
             print("Invalid mobile number. Please enter 10 digits.")
 
     while True:
-        password = input("Enter password (minimum 8 characters, alphanumeric only): ")
+        password = input("Enter password (minimum 8 characters, alphanumeric with special characters): ")
         if validate_password(password):
             break
         else:
-            print("Invalid password. Password should be at least 8 characters long and contain only alphanumeric characters.")
+            print("Invalid password. Password should be at least 8 characters long and contain alphanumeric with special characters.")
 
     user = User(username, address, aadhar, mobile)  # Initialize balance to 0
     print("Registration successful!")

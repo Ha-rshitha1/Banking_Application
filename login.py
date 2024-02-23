@@ -1,7 +1,6 @@
 #Login
 import mysql.connector
 import random
-import string
 
 class User:
     def __init__(self, username, address, aadhar, mobile, balance):
@@ -16,14 +15,15 @@ class User:
 
     def generate_card(self, card_type):
         # Generate random card details
-        card_number = ''.join(random.choices(string.digits, k=16))
-        pin = ''.join(random.choices(string.digits, k=4))
-        cvv = ''.join(random.choices(string.digits, k=3))
+        card_number = ''.join(random.choices('0123456789', k=16))
+        pin = ''.join(random.choices('0123456789', k=4))
+        cvv = ''.join(random.choices('0123456789', k=3))
         return {"type": card_type, "number": card_number, "pin": pin, "cvv": cvv}
 
     def generate_account_number(self):
-        account_number = ''.join(random.choices(string.digits, k=random.randint(11, 14)))
+        account_number = ''.join(random.choices('0123456789', k=random.randint(11, 14)))
         return account_number
+
 
 
 def login_user():
@@ -329,13 +329,58 @@ def transfer_funds(user):
 
     show_options(user)
 
-
 def change_card_pins(user):
+    old_pin = input("Enter your current PIN for Credit Card: ")
+
+    # Fetch the current PIN from the database
+    try:
+        connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="Harshi@526",
+            database="Banking_App"
+        )
+        cursor = connection.cursor()
+
+        sql = "SELECT credit_card_pin FROM users WHERE username = %s"
+        cursor.execute(sql, (user.username,))
+        result = cursor.fetchone()
+        current_pin = result[0]
+
+        # Convert the old_pin to integer for comparison
+        old_pin = int(old_pin)
+
+        if old_pin != current_pin:
+            print("Invalid PIN. Please enter your current PIN.")
+            return
+
+    except mysql.connector.Error as error:
+        print("Error while fetching credit card PIN:", error)
+        return
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+    # Loop for PIN confirmation
+    while True:
+        confirm_pin = input("Please confirm your current PIN: ")
+        confirm_pin = int(confirm_pin)  # Convert to integer for comparison
+
+        if confirm_pin != current_pin:
+            print("PIN confirmation failed.")
+            retry = input("Do you want to retry? (yes/no): ").lower()
+            if retry != 'yes':
+                return
+        else:
+            break  # Break out of the loop if confirmation succeeds
+
     new_pin = input("Enter new PIN for Credit Card: ")
-    # Implement change PIN functionality for credit and debit cards
-    print("PIN changed successfully!")
 
     try:
+        # Convert the new_pin to integer before updating the database
+        new_pin = int(new_pin)
+
         connection = mysql.connector.connect(
             host="localhost",
             user="root",
@@ -358,6 +403,7 @@ def change_card_pins(user):
             connection.close()
 
     show_options(user)
+
 
 def register_new_credit_card(user):
     print("Register New Credit Card:")
