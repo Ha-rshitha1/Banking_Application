@@ -26,6 +26,6 @@ MySQL database
 Installation
 1)Clone the repository to your local machine.
 2)Install the required dependencies (mysql-connector-python).
-3)Set up a MySQL database with the required schema. You can find the database schema in the 'schema.sql' file.
+3)Set up a MySQL database with the required schema. You can find the database schema in the 'Schemas.sql' file.
 4)Update the MySQL connection details in the code (host, user, password, database) to match your local setup.
 
