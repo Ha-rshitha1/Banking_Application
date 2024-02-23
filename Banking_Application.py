@@ -33,9 +33,8 @@ def register_user():
         return username.isalpha()
 
     def validate_address(address):
-        return bool(re.match(r'^[a-zA-Z0-9\s]+$', address))
-
-
+        return bool(re.match(r'^[a-zA-Z0-9\s,-]+$', address))
+    
     def validate_aadhar(aadhar):
         return re.match(r'^[0-9]{12}$', aadhar)
 
@@ -43,7 +42,7 @@ def register_user():
         return re.match(r'^[0-9]{10}$', mobile)
 
     def validate_password(password):
-        return bool(re.match(r'^[a-zA-Z0-9]{8,}$', password))
+        return bool(re.match(r'^[a-zA-Z0-9!@#$%^&*()-_+=]{8,}$', password))
 
     # Get valid input from user
     while True:
@@ -54,11 +53,11 @@ def register_user():
             print("Invalid username. Please enter alphabets only.")
 
     while True:
-        address = input("Enter address (alphanumeric): ")
+        address = input("Enter address (alphanumeric with special characters): ")
         if validate_address(address):
             break
         else:
-            print("Invalid address. Please enter alphanumeric characters only.")
+            print("Invalid address. Please enter alphanumeric characters with special characters.")
 
     while True:
         aadhar = input("Enter Aadhar number (12 digits): ")
@@ -75,11 +74,11 @@ def register_user():
             print("Invalid mobile number. Please enter 10 digits.")
 
     while True:
-        password = input("Enter password (minimum 8 characters, alphanumeric only): ")
+        password = input("Enter password (minimum 8 characters, alphanumeric with special characters): ")
         if validate_password(password):
             break
         else:
-            print("Invalid password. Password should be at least 8 characters long and contain only alphanumeric characters.")
+            print("Invalid password. Password should be at least 8 characters long and contain alphanumeric characters with special charcters.")
 
     user = User(username, address, aadhar, mobile)  # Initialize balance to 0
     print("Registration successful!")
@@ -611,3 +610,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
