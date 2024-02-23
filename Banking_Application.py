@@ -33,7 +33,8 @@ def register_user():
         return username.isalpha()
 
     def validate_address(address):
-        return address.isalnum()
+        return bool(re.match(r'^[a-zA-Z0-9\s]+$', address))
+
 
     def validate_aadhar(aadhar):
         return re.match(r'^[0-9]{12}$', aadhar)
@@ -428,13 +429,58 @@ def transfer_funds(user):
 
     show_options(user)
 
-
 def change_card_pins(user):
+    old_pin = input("Enter your current PIN for Credit Card: ")
+
+    # Fetch the current PIN from the database
+    try:
+        connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="Harshi@526",
+            database="Banking_App"
+        )
+        cursor = connection.cursor()
+
+        sql = "SELECT credit_card_pin FROM users WHERE username = %s"
+        cursor.execute(sql, (user.username,))
+        result = cursor.fetchone()
+        current_pin = result[0]
+
+        # Convert the old_pin to integer for comparison
+        old_pin = int(old_pin)
+
+        if old_pin != current_pin:
+            print("Invalid PIN. Please enter your current PIN.")
+            return
+
+    except mysql.connector.Error as error:
+        print("Error while fetching credit card PIN:", error)
+        return
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+    # Loop for PIN confirmation
+    while True:
+        confirm_pin = input("Please confirm your current PIN: ")
+        confirm_pin = int(confirm_pin)  # Convert to integer for comparison
+
+        if confirm_pin != current_pin:
+            print("PIN confirmation failed.")
+            retry = input("Do you want to retry? (yes/no): ").lower()
+            if retry != 'yes':
+                return
+        else:
+            break  # Break out of the loop if confirmation succeeds
+
     new_pin = input("Enter new PIN for Credit Card: ")
-    # Implement change PIN functionality for credit and debit cards
-    print("PIN changed successfully!")
 
     try:
+        # Convert the new_pin to integer before updating the database
+        new_pin = int(new_pin)
+
         connection = mysql.connector.connect(
             host="localhost",
             user="root",
@@ -457,6 +503,7 @@ def change_card_pins(user):
             connection.close()
 
     show_options(user)
+
 
 def register_new_credit_card(user):
     print("Register New Credit Card:")
