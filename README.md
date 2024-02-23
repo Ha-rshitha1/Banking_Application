@@ -1,7 +1,6 @@
 **BANKING APPLICATION**
 
-**Overview:**
-The Banking Application is a Python-based system that allows users to register, login, and perform various banking operations such as checking account balance, transferring funds, adding beneficiaries, and managing cards.
+**Overview:** - *The Banking Application is a Python-based system that allows users to register, login, and perform various banking operations such as checking account balance, transferring funds, adding beneficiaries, and managing cards.*
 
 **Features:**
 - **Registration:** Users can register by providing basic details like username, address, Aadhar number, and mobile number.
@@ -14,18 +13,18 @@ The Banking Application is a Python-based system that allows users to register, 
 - **Update Account Information:** Users can update their address and mobile number.
 
 **How to Use:**
-*Register:* To register, select option 1 and provide the requested information.
-*Login:* After registration, you can login using option 2 with your username and password.
-*Explore Options:* Once logged in, you'll see a menu with different options to perform banking operations.
-*Exit:* You can exit the application at any time by selecting the exit option.
+- **Register:** To register, select option 1 and provide the requested information.
+- **Login:** After registration, you can login using option 2 with your username and password.
+- **Explore Options:** Once logged in, you'll see a menu with different options to perform banking operations.
+- **Exit:** You can exit the application at any time by selecting the exit option.
 
 **Dependencies:**
-*Python 3.x*
-*MySQL database*
+- **Python 3.x**
+- **MySQL database**
 
 **Installation:**
-1)Clone the repository to your local machine.
-2)Install the required dependencies (mysql-connector-python).
-3)Set up a MySQL database with the required schema. You can find the database schema in the 'Schemas.sql' file.
-4)Update the MySQL connection details in the code (host, user, password, database) to match your local setup.
+- *1)Clone the repository to your local machine.*
+- *2)Install the required dependencies (mysql-connector-python).*
+- *3)Set up a MySQL database with the required schema. You can find the database schema in the 'Schemas.sql' file.*
+- *4)Update the MySQL connection details in the code (host, user, password, database) to match your local setup.*
 
