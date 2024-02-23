@@ -1,7 +1,7 @@
 **BANKING APPLICATION**
 
 **Overview:**
-The Banking Application is a Python-based system that allows users to register, login, and perform various banking operations such as checking account balance, transferring funds, adding beneficiaries, and managing cards.
+- The Banking Application is a Python-based system that allows users to register, login, and perform various banking operations such as checking account balance, transferring funds, adding beneficiaries, and managing cards.
 
 **Features:**
 - **Registration:** Users can register by providing basic details like username, address, Aadhar number, and mobile number.
