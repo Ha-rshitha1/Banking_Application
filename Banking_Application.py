@@ -34,11 +34,10 @@ def register_user():
         return bool(re.match(r'^[a-zA-Z0-9\s,-]+$', address))
     
     def validate_aadhar(aadhar):
-        return re.match(r'^[0-9]{12}$', aadhar)
-
+        return bool(re.match(r'^\d{4}\s?\d{4}\s?\d{4}$', aadhar))
     def validate_mobile(mobile):
-        return re.match(r'^[0-9]{10}$', mobile)
-
+        return bool(re.match(r'^[7-9][0-9]{9}$', mobile))
+    
     def validate_password(password):
         return bool(re.match(r'^[a-zA-Z0-9!@#$%^&*()-_+=]{8,}$', password))
 
@@ -58,18 +57,27 @@ def register_user():
             print("Invalid address. Please enter alphanumeric characters with special characters.")
 
     while True:
-        aadhar = input("Enter Aadhar number (12 digits): ")
-        if validate_aadhar(aadhar):
+        aadhar = input("Enter Aadhar number (12 digits with automatic gaps insertion after every 4 digits): ")
+        aadhar = re.sub(r'\D', '', aadhar)  # Remove non-digit characters
+
+    # Check if Aadhar number has exactly 12 digits
+        if len(aadhar) == 12:
+        # Insert automatic gaps after every 4 digits
+            aadhar_with_gaps = ' '.join(aadhar[i:i+4] for i in range(0, 12, 4))
+            print("Aadhar number with automatic gaps insertion:")
+            print(aadhar_with_gaps)
             break
         else:
             print("Invalid Aadhar number. Please enter 12 digits.")
+
+
 
     while True:
         mobile = input("Enter mobile number (10 digits): ")
         if validate_mobile(mobile):
             break
         else:
-            print("Invalid mobile number. Please enter 10 digits.")
+            print("Invalid mobile number.")
 
     while True:
         password = input("Enter password (minimum 8 characters, alphanumeric with special characters): ")
@@ -608,3 +616,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
