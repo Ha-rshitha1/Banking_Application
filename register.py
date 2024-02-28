@@ -36,11 +36,16 @@ def register_user():
         return bool(re.match(r'^[a-zA-Z0-9\s,-]+$', address))
 
     def validate_aadhar(aadhar):
-        return re.match(r'^[0-9]{12}$', aadhar)
+        aadhar = ''.join(filter(str.isdigit, aadhar))  
+        if len(aadhar) == 12:
+            aadhar_with_gaps = ' '.join(aadhar[i:i+4] for i in range(0, len(aadhar), 4))
+            return aadhar_with_gaps
+        else:
+            return None
 
     def validate_mobile(mobile):
-        return re.match(r'^[0-9]{10}$', mobile)
-
+        return bool(re.match(r'^[7-9][0-9]{9}$', mobile))
+        
     def validate_password(password):
         return bool(re.match(r'^[a-zA-Z0-9!@#$%^&*()-_+=]{8,}$', password))
 
@@ -60,8 +65,11 @@ def register_user():
             print("Invalid address. Please enter alphanumeric characters with special symbols.")
 
     while True:
-        aadhar = input("Enter Aadhar number (12 digits): ")
-        if validate_aadhar(aadhar):
+        aadhar = input("Enter Aadhar number (12 digits with automatic gaps insertion after every 4 digits): ")
+        aadhar_with_gaps = validate_aadhar(aadhar)
+        if aadhar_with_gaps:
+            print("Aadhar number with automatic gaps insertion:")
+            print(aadhar_with_gaps)
             break
         else:
             print("Invalid Aadhar number. Please enter 12 digits.")
@@ -133,7 +141,6 @@ def main():
 
     while True:
         choice = input("Enter your choice: ")
-
         if choice == '1':
             register_user()
         elif choice == '2':
