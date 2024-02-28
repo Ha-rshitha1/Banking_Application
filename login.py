@@ -1,6 +1,7 @@
 #Login
 import mysql.connector
 import random
+import string
 
 class User:
     def __init__(self, username, address, aadhar, mobile, balance):
@@ -107,12 +108,6 @@ def show_account_info(user):
         if decision == 'yes':
             initial_deposit(user)
 
-    show_options(user)
-
-def show_updated_account_info(user):
-    print("Updated Account Information:")
-    print("Address:", user.address)
-    print("Mobile Number:", user.mobile)
     show_options(user)
 
 def list_beneficiaries(user):
@@ -240,10 +235,17 @@ def add_beneficiary(user):
 
     list_beneficiaries(user)
 
-def update_account_info(user):
+def show_updated_account_info(user):
     print("Update Account Information:")
     new_address = input("Enter new address: ")
-    new_mobile = input("Enter new mobile number: ")
+
+    # Loop until a valid mobile number is entered
+    while True:
+        new_mobile = input("Enter new mobile number: ")
+        if len(new_mobile) == 10 and new_mobile.isdigit() and new_mobile[0] in ['7', '8', '9']:
+            break
+        else:
+            print("Invalid mobile number. Mobile number must be 10 digits starting with 7, 8, or 9.")
 
     try:
         connection = mysql.connector.connect(
@@ -270,13 +272,19 @@ def update_account_info(user):
             cursor.close()
             connection.close()
 
-    show_updated_account_info(user)  # Show updated user info
+    #show_updated_account_info(user)  # Show updated user info
+
+    show_options(user)  # Show options after updating account info
 
 def transfer_funds(user):
     print("Transfer Funds:")
     while True:
         recipient_username = input("Enter recipient's username: ")
         amount = int(input("Enter amount to transfer: "))
+
+        if amount <= 0:
+            print("Amount to transfer must be a positive value.")
+            continue  # Restart the loop to prompt the user again
 
         try:
             connection = mysql.connector.connect(
@@ -297,7 +305,7 @@ def transfer_funds(user):
                     break
                 continue
 
-            # Check if sender has sufficient balance
+            # Update sender's balance only if the amount is positive
             if user.balance < amount:
                 print("Insufficient funds.")
                 retry = input("Do you want to retry? (yes/no): ").lower()
@@ -330,37 +338,42 @@ def transfer_funds(user):
     show_options(user)
 
 def change_card_pins(user):
-    old_pin = input("Enter your current PIN for Credit Card: ")
+    while True:
+        old_pin = input("Enter your current PIN for Credit Card: ")
 
-    # Fetch the current PIN from the database
-    try:
-        connection = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="Harshi@526",
-            database="Banking_App"
-        )
-        cursor = connection.cursor()
+        # Fetch the current PIN from the database
+        try:
+            connection = mysql.connector.connect(
+                host="localhost",
+                user="root",
+                password="Harshi@526",
+                database="Banking_App"
+            )
+            cursor = connection.cursor()
 
-        sql = "SELECT credit_card_pin FROM users WHERE username = %s"
-        cursor.execute(sql, (user.username,))
-        result = cursor.fetchone()
-        current_pin = result[0]
+            sql = "SELECT credit_card_pin FROM users WHERE username = %s"
+            cursor.execute(sql, (user.username,))
+            result = cursor.fetchone()
+            current_pin = result[0]
 
-        # Convert the old_pin to integer for comparison
-        old_pin = int(old_pin)
+            # Convert the old_pin to integer for comparison
+            old_pin = int(old_pin)
 
-        if old_pin != current_pin:
-            print("Invalid PIN. Please enter your current PIN.")
-            return
+            if old_pin != current_pin:
+                print("Invalid PIN. Please enter your current PIN.")
+                retry = input("Do you want to retry? (yes/no): ").lower()
+                if retry != 'yes':
+                    return  # Exit the function immediately
+            else:
+                break  # Break out of the loop if the PIN is valid
 
-    except mysql.connector.Error as error:
-        print("Error while fetching credit card PIN:", error)
-        return
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
+        except mysql.connector.Error as error:
+            print("Error while fetching credit card PIN:", error)
+            return  # Exit the function immediately
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
 
     # Loop for PIN confirmation
     while True:
@@ -371,7 +384,7 @@ def change_card_pins(user):
             print("PIN confirmation failed.")
             retry = input("Do you want to retry? (yes/no): ").lower()
             if retry != 'yes':
-                return
+                return  # Exit the function immediately
         else:
             break  # Break out of the loop if confirmation succeeds
 
@@ -403,7 +416,6 @@ def change_card_pins(user):
             connection.close()
 
     show_options(user)
-
 
 def register_new_credit_card(user):
     print("Register New Credit Card:")
@@ -454,7 +466,6 @@ def register_new_credit_card(user):
 
     show_options(user)
 
-
 def show_options(user):
     print("\nOptions:")
     print("1. Display Account Information and Balance")
@@ -477,7 +488,7 @@ def show_options(user):
     elif choice == '4':
         add_beneficiary(user)
     elif choice == '5':
-        update_account_info(user)
+        show_updated_account_info(user)
     elif choice == '6':
         transfer_funds(user)
     elif choice == '7':
