@@ -519,11 +519,6 @@ def change_card_pins(user):
 
     show_options(user)
 
-
-            
-
-
-
 def register_new_credit_card(user):
     print("Register New Credit Card:")
     card_type = input("Enter card type (Credit/Debit): ")
