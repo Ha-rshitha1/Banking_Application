@@ -1,4 +1,3 @@
-#Banking_Application
 import mysql.connector
 import random
 import re
@@ -15,7 +14,6 @@ class User:
         self.account_number = self.generate_account_number()
      
     def generate_card(self, card_type):
-        # Generate random card details
         card_number = ''.join(random.choices('0123456789', k=16))
         pin = ''.join(random.choices('0123456789', k=4))
         cvv = ''.join(random.choices('0123456789', k=3))
@@ -34,7 +32,13 @@ def register_user():
         return bool(re.match(r'^[a-zA-Z0-9\s,-]+$', address))
     
     def validate_aadhar(aadhar):
-        return bool(re.match(r'^\d{4}\s?\d{4}\s?\d{4}$', aadhar))
+        aadhar = ''.join(filter(str.isdigit, aadhar))  
+        if len(aadhar) == 12:
+            aadhar_with_gaps = ' '.join(aadhar[i:i+4] for i in range(0, len(aadhar), 4))
+            return aadhar_with_gaps
+        else:
+            return None
+    
     def validate_mobile(mobile):
         return bool(re.match(r'^[7-9][0-9]{9}$', mobile))
     
@@ -58,19 +62,13 @@ def register_user():
 
     while True:
         aadhar = input("Enter Aadhar number (12 digits with automatic gaps insertion after every 4 digits): ")
-        aadhar = re.sub(r'\D', '', aadhar)  # Remove non-digit characters
-
-    # Check if Aadhar number has exactly 12 digits
-        if len(aadhar) == 12:
-        # Insert automatic gaps after every 4 digits
-            aadhar_with_gaps = ' '.join(aadhar[i:i+4] for i in range(0, 12, 4))
+        aadhar_with_gaps = validate_aadhar(aadhar)
+        if aadhar_with_gaps:
             print("Aadhar number with automatic gaps insertion:")
             print(aadhar_with_gaps)
             break
         else:
             print("Invalid Aadhar number. Please enter 12 digits.")
-
-
 
     while True:
         mobile = input("Enter mobile number (10 digits): ")
@@ -214,12 +212,6 @@ def show_account_info(user):
 
     show_options(user)
 
-def show_updated_account_info(user):
-    print("Updated Account Information:")
-    print("Address:", user.address)
-    print("Mobile Number:", user.mobile)
-    show_options(user)
-
 def list_beneficiaries(user):
     print("List of Beneficiaries:")
     try:
@@ -345,10 +337,17 @@ def add_beneficiary(user):
 
     list_beneficiaries(user)
 
-def update_account_info(user):
+def show_updated_account_info(user):
     print("Update Account Information:")
     new_address = input("Enter new address: ")
-    new_mobile = input("Enter new mobile number: ")
+
+    # Loop until a valid mobile number is entered
+    while True:
+        new_mobile = input("Enter new mobile number: ")
+        if len(new_mobile) == 10 and new_mobile.isdigit() and new_mobile[0] in ['7', '8', '9']:
+            break
+        else:
+            print("Invalid mobile number. Mobile number must be 10 digits starting with 7, 8, or 9.")
 
     try:
         connection = mysql.connector.connect(
@@ -375,13 +374,19 @@ def update_account_info(user):
             cursor.close()
             connection.close()
 
-    show_updated_account_info(user)  # Show updated user info
+    #show_updated_account_info(user)  # Show updated user info
+
+    show_options(user)  # Show options after updating account info
 
 def transfer_funds(user):
     print("Transfer Funds:")
     while True:
         recipient_username = input("Enter recipient's username: ")
         amount = int(input("Enter amount to transfer: "))
+
+        if amount <= 0:
+            print("Amount to transfer must be a positive value.")
+            continue  # Restart the loop to prompt the user again
 
         try:
             connection = mysql.connector.connect(
@@ -402,7 +407,7 @@ def transfer_funds(user):
                     break
                 continue
 
-            # Check if sender has sufficient balance
+            # Update sender's balance only if the amount is positive
             if user.balance < amount:
                 print("Insufficient funds.")
                 retry = input("Do you want to retry? (yes/no): ").lower()
@@ -435,37 +440,42 @@ def transfer_funds(user):
     show_options(user)
 
 def change_card_pins(user):
-    old_pin = input("Enter your current PIN for Credit Card: ")
+    while True:
+        old_pin = input("Enter your current PIN for Credit Card: ")
 
-    # Fetch the current PIN from the database
-    try:
-        connection = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="Harshi@526",
-            database="Banking_App"
-        )
-        cursor = connection.cursor()
+        # Fetch the current PIN from the database
+        try:
+            connection = mysql.connector.connect(
+                host="localhost",
+                user="root",
+                password="Harshi@526",
+                database="Banking_App"
+            )
+            cursor = connection.cursor()
 
-        sql = "SELECT credit_card_pin FROM users WHERE username = %s"
-        cursor.execute(sql, (user.username,))
-        result = cursor.fetchone()
-        current_pin = result[0]
+            sql = "SELECT credit_card_pin FROM users WHERE username = %s"
+            cursor.execute(sql, (user.username,))
+            result = cursor.fetchone()
+            current_pin = result[0]
 
-        # Convert the old_pin to integer for comparison
-        old_pin = int(old_pin)
+            # Convert the old_pin to integer for comparison
+            old_pin = int(old_pin)
 
-        if old_pin != current_pin:
-            print("Invalid PIN. Please enter your current PIN.")
-            return
+            if old_pin != current_pin:
+                print("Invalid PIN. Please enter your current PIN.")
+                retry = input("Do you want to retry? (yes/no): ").lower()
+                if retry != 'yes':
+                    return  # Exit the function immediately
+            else:
+                break  # Break out of the loop if the PIN is valid
 
-    except mysql.connector.Error as error:
-        print("Error while fetching credit card PIN:", error)
-        return
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
+        except mysql.connector.Error as error:
+            print("Error while fetching credit card PIN:", error)
+            return  # Exit the function immediately
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
 
     # Loop for PIN confirmation
     while True:
@@ -476,7 +486,7 @@ def change_card_pins(user):
             print("PIN confirmation failed.")
             retry = input("Do you want to retry? (yes/no): ").lower()
             if retry != 'yes':
-                return
+                return  # Exit the function immediately
         else:
             break  # Break out of the loop if confirmation succeeds
 
@@ -508,6 +518,10 @@ def change_card_pins(user):
             connection.close()
 
     show_options(user)
+
+
+            
+
 
 
 def register_new_credit_card(user):
@@ -582,7 +596,7 @@ def show_options(user):
     elif choice == '4':
         add_beneficiary(user)
     elif choice == '5':
-        update_account_info(user)
+        show_updated_account_info(user)
     elif choice == '6':
         transfer_funds(user)
     elif choice == '7':
@@ -596,9 +610,8 @@ def show_options(user):
         show_options(user)
 
 def main():
-    #print("Welcome to Login System")
     while True:
-        print("Options:")
+        print("Welcome to Banking Application!:")
         print("1. Register")
         print("2. Login")
         print("3. Exit")
@@ -616,4 +629,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
