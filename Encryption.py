@@ -375,43 +375,10 @@ def list_cards(user):
 
     show_options(user)
 
-def reset_password(user):
-    new_password = getpass.getpass("Enter new password: ")
-    confirm_password = getpass.getpass("Confirm new password: ")
-
-    if new_password == confirm_password:
-        try:
-            connection = mysql.connector.connect(
-                host="localhost",
-                user="root",
-                password="Harshi@526",
-                database="Banking"
-            )
-            cursor = connection.cursor()
-
-            # Hash the new password using SHA-256
-            hashed_password = hash_password(new_password)
-
-            # Update the password in the database
-            cursor.execute("UPDATE users SET password = %s WHERE username = %s", (hashed_password, user.username))
-            connection.commit()
-            print("Password reset successful!")
-
-        except mysql.connector.Error as error:
-            print("Error while resetting password:", error)
-        finally:
-            if connection.is_connected():
-                cursor.close()
-                connection.close()
-    else:
-        print("Passwords do not match. Please try again.")
-
-    show_options(user)
-
 def reset_pin(user):
     card_type = input("Enter card type (Credit/Debit): ")
-    new_pin = input("Enter new PIN (4 digits): ")
-    confirm_pin = input("Confirm new PIN: ")
+    new_pin = getpass.getpass("Enter new PIN (4 digits): ")  # Use getpass.getpass for secure input
+    confirm_pin = getpass.getpass("Confirm new PIN: ")
 
     # Validate new PIN length
     if len(new_pin) != 4 or not new_pin.isdigit():
@@ -463,8 +430,8 @@ def reset_pin(user):
 
 def reset_cvv(user):
     card_type = input("Enter card type (Credit/Debit): ")
-    new_cvv = input("Enter new CVV (3 digits): ")
-    confirm_cvv = input("Confirm new CVV: ")
+    new_cvv = getpass.getpass("Enter new CVV (3 digits): ")  # Use getpass.getpass for secure input
+    confirm_cvv = getpass.getpass("Confirm new CVV: ")
 
     # Validate new CVV length
     if len(new_cvv) != 3 or not new_cvv.isdigit():
