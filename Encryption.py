@@ -14,12 +14,12 @@ class User:
         self.credit_card = self.generate_card("Credit")
         self.debit_card = self.generate_card("Debit")
         self.account_number = self.generate_account_number()
-     
+
     def generate_card(self, card_type):
         card_number = ''.join(random.choices('0123456789', k=16))
         pin = ''.join(random.choices('0123456789', k=4))
         cvv = ''.join(random.choices('0123456789', k=3))
-        return {"type": card_type, "number": card_number, "pin": pin, "cvv": cvv}
+        return {"type": card_type, "number": card_number, "pin": hash_pin(pin), "cvv": hash_cvv(cvv)}
 
     def generate_account_number(self):
         account_number = ''.join(random.choices('0123456789', k=random.randint(11, 14)))
@@ -40,16 +40,6 @@ def hash_cvv(cvv):
     hashed_cvv = hashlib.sha256(cvv.encode()).hexdigest()
     return hashed_cvv
 
-def get_original_pin(hashed_pin):
-    # Assuming hashed_pin is in hex format
-    original_pin = int(hashed_pin, 16) % 10000  # Extract last 4 digits
-    return str(original_pin).zfill(4)  # Ensure it's 4 digits long, zero-padded if necessary
-
-def get_original_cvv(hashed_cvv):
-    # Assuming hashed_cvv is in hex format
-    original_cvv = int(hashed_cvv, 16) % 1000  # Extract last 3 digits
-    return str(original_cvv).zfill(3)  # Ensure it's 3 digits long, zero-padded if necessary
-
 def register_user():
     # Input validation functions
     def validate_username(username):
@@ -57,18 +47,18 @@ def register_user():
 
     def validate_address(address):
         return bool(re.match(r'^[a-zA-Z0-9\s,-]+$', address))
-    
+
     def validate_aadhar(aadhar):
-        aadhar = ''.join(filter(str.isdigit, aadhar))  
+        aadhar = ''.join(filter(str.isdigit, aadhar))
         if len(aadhar) == 12:
-            aadhar_with_gaps = ' '.join(aadhar[i:i+4] for i in range(0, len(aadhar), 4))
+            aadhar_with_gaps = ' '.join(aadhar[i:i + 4] for i in range(0, len(aadhar), 4))
             return aadhar_with_gaps
         else:
             return None
-    
+
     def validate_mobile(mobile):
         return bool(re.match(r'^[7-9][0-9]{9}$', mobile))
-    
+
     def validate_password(password):
         return bool(re.match(r'^[a-zA-Z0-9!@#$%^&*()-_+=]{8,}$', password))
 
@@ -93,14 +83,22 @@ def register_user():
         if aadhar_with_gaps:
             print("Aadhar number with automatic gaps insertion:")
             print(aadhar_with_gaps)
-            break
+            # Check if Aadhar number already exists
+            if is_unique("aadhar", aadhar):
+                break
+            else:
+                print("Aadhar number already exists. Please enter a unique Aadhar number.")
         else:
             print("Invalid Aadhar number. Please enter 12 digits.")
 
     while True:
         mobile = input("Enter mobile number (10 digits): ")
         if validate_mobile(mobile):
-            break
+            # Check if mobile number already exists
+            if is_unique("mobile", mobile):
+                break
+            else:
+                print("Mobile number already exists. Please enter a unique mobile number.")
         else:
             print("Invalid mobile number.")
 
@@ -116,16 +114,44 @@ def register_user():
     print("Your account number:", user.account_number)
     print("Your credit card details:")
     print("Number:", user.credit_card["number"])
-    print("PIN: ****")
-    print("CVV: ***")
+    print("PIN:", user.credit_card["pin"])
+    print("CVV:", user.credit_card["cvv"])
     print("Your debit card details:")
     print("Number:", user.debit_card["number"])
-    print("PIN: ****")
-    print("CVV: ***")
+    print("PIN:", user.debit_card["pin"])
+    print("CVV:", user.debit_card["cvv"])
 
     # Store user data in MySQL
     store_in_mysql(user, password)
     main_menu()
+
+def is_unique(field, value):
+    # Check if the given field value is unique in the database
+    try:
+        connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="Harshi@526",
+            database="Banking"
+        )
+        cursor = connection.cursor()
+
+        cursor.execute(f"SELECT * FROM users WHERE {field} = %s", (value,))
+        result = cursor.fetchone()
+
+        if result:
+            return False
+        else:
+            return True
+
+    except mysql.connector.Error as error:
+        print("Error while checking uniqueness:", error)
+        return False
+
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
 
 def store_in_mysql(user, password):
     # Connect to MySQL database
@@ -136,35 +162,23 @@ def store_in_mysql(user, password):
             password="Harshi@526",
             database="Banking"
         )
-
         cursor = connection.cursor()
 
-        # Hash the password using SHA-256
-        hashed_password = hash_password(password)
+        # Insert user data into 'users' table
+        insert_user_query = "INSERT INTO users (username, address, aadhar, mobile, password, account_number, balance, credit_card_number, credit_card_pin, credit_card_cvv, debit_card_number, debit_card_pin, debit_card_cvv) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        user_data = (user.username, user.address, user.aadhar, user.mobile, hash_password(password), user.account_number, user.balance, user.credit_card["number"], user.credit_card["pin"], user.credit_card["cvv"], user.debit_card["number"], user.debit_card["pin"], user.debit_card["cvv"])
+        cursor.execute(insert_user_query, user_data)
 
-        # Hash the PIN and CVV using SHA-256
-        hashed_credit_card_pin = hash_pin(user.credit_card["pin"])
-        hashed_credit_card_cvv = hash_cvv(user.credit_card["cvv"])
-        hashed_debit_card_pin = hash_pin(user.debit_card["pin"])
-        hashed_debit_card_cvv = hash_cvv(user.debit_card["cvv"])
-
-        # Insert user data into the table
-        sql = "INSERT INTO users (username, address, aadhar, mobile, balance, account_number, password, credit_card_number, credit_card_pin, credit_card_cvv, debit_card_number, debit_card_pin, debit_card_cvv) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-        val = (user.username, user.address, int(user.aadhar), int(user.mobile), user.balance, int(user.account_number), hashed_password, int(user.credit_card["number"]), hashed_credit_card_pin, hashed_credit_card_cvv, int(user.debit_card["number"]), hashed_debit_card_pin, hashed_debit_card_cvv)
-        cursor.execute(sql, val)
-
-        # Commit changes and close connection
+        # Commit changes
         connection.commit()
-        print("User data stored in MySQL successfully!")
 
     except mysql.connector.Error as error:
-        print("Error while connecting to MySQL", error)
+        print("Error while storing user data in MySQL:", error)
 
     finally:
         if connection.is_connected():
             cursor.close()
             connection.close()
-            print("MySQL connection is closed")
 
 def login_user():
     username = input("Enter username: ")
@@ -252,12 +266,27 @@ def fetch_user(username, password):
             cursor.close()
             connection.close()
 
+def show_account_info(user):
+    print("Account Information:")
+    print("Account Number:", user.account_number)
+    print("Balance:", user.balance)
+
+    if user.balance == 0:
+        print("It looks like your account balance is 0. Would you like to make an initial deposit? (yes/no)")
+        decision = input().lower()
+        if decision == 'yes':
+            initial_deposit(user)
+
+    show_options(user)
+
 def initial_deposit(user):
     try:
-        deposit_amount = int(input("Enter initial deposit amount: "))
-        if deposit_amount < 0:
-            print("Deposit amount cannot be negative.")
-            return
+        while True:
+            deposit_amount = int(input("Enter initial deposit amount: "))
+            if deposit_amount < 0:
+                print("Deposit amount cannot be negative. Please enter a positive value.")
+            else:
+                break  # Exit the loop if a positive value is entered
 
         connection = mysql.connector.connect(
             host="localhost",
@@ -278,20 +307,9 @@ def initial_deposit(user):
     except mysql.connector.Error as error:
         print("Error while making the initial deposit:", error)
     finally:
-        if connection.is_connected():
+        if 'connection' in locals() and connection.is_connected():
             cursor.close()
             connection.close()
-
-def show_account_info(user):
-    print("Account Information:")
-    print("Account Number:", user.account_number)
-    print("Balance:", user.balance)
-
-    if user.balance == 0:
-        print("It looks like your account balance is 0. Would you like to make an initial deposit? (yes/no)")
-        decision = input().lower()
-        if decision == 'yes':
-            initial_deposit(user)
 
     show_options(user)
 
@@ -340,30 +358,32 @@ def list_cards(user):
         # Fetch credit card details for the user
         print("Credit Card:")
         print("Card Number:", user.credit_card["number"])
-        print("PIN: ****")
-        print("CVV: ***")
+        print("PIN:", user.credit_card["pin"])  # Display actual PIN
+        print("CVV:", user.credit_card["cvv"])  # Display actual CVV
         print()
 
         # Fetch debit card details for the user
         print("Debit Card:")
         print("Card Type: Debit")
         print("Card Number:", user.debit_card["number"])
-        print("PIN: ****")
-        print("CVV: ***")
-        #print("Cardholder Name:", user.username)
+        print("PIN:", user.debit_card["pin"])  # Display actual PIN
+        print("CVV:", user.debit_card["cvv"])  # Display actual CVV
         print()
         
         # Fetch other registered cards for the user from the cards table
-        cursor.execute("SELECT card_type, card_number FROM cards WHERE username = %s", (user.username,))
+        cursor.execute("SELECT card_type, card_number, pin, cvv FROM cards WHERE username = %s", (user.username,))
         other_cards = cursor.fetchall()
-
         if other_cards:
             print("Newly Registered Card Details:")
             for card in other_cards:
                 print(f"Card Type: {card[0]}")
                 print(f"Card Number: {card[1]}")
-                print("PIN: ****")
-                print("CVV: ***")
+                if card[2] != user.credit_card["pin"] and card[3] != user.credit_card["cvv"]:
+                    print("PIN:", "*" * len(card[2]))  # Display asterisks for PIN if it's not the same as the current card
+                    print("CVV:", "*" * len(card[3]))  # Display asterisks for CVV if it's not the same as the current card
+                else:
+                    print("PIN:", card[2])  # Display the actual PIN for existing cards
+                    print("CVV:", card[3])  # Display the actual CVV for existing cards
                 print()
 
     except mysql.connector.Error as error:
@@ -372,6 +392,39 @@ def list_cards(user):
         if connection.is_connected():
             cursor.close()
             connection.close()
+
+    show_options(user) 
+
+def reset_password(user):
+    new_password = getpass.getpass("Enter new password: ")
+    confirm_password = getpass.getpass("Confirm new password: ")
+
+    if new_password == confirm_password:
+        try:
+            connection = mysql.connector.connect(
+                host="localhost",
+                user="root",
+                password="Harshi@526",
+                database="Banking"
+            )
+            cursor = connection.cursor()
+
+            # Hash the new password using SHA-256
+            hashed_password = hash_password(new_password)
+
+            # Update the password in the database
+            cursor.execute("UPDATE users SET password = %s WHERE username = %s", (hashed_password, user.username))
+            connection.commit()
+            print("Password reset successful!")
+
+        except mysql.connector.Error as error:
+            print("Error while resetting password:", error)
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
+    else:
+        print("Passwords do not match. Please try again.")
 
     show_options(user)
 
@@ -567,13 +620,77 @@ def show_updated_account_info(user):
 
 def transfer_funds(user):
     print("Transfer Funds:")
+    recipient_username = input("Enter recipient's username: ")
+    
     while True:
-        recipient_username = input("Enter recipient's username: ")
-        amount = int(input("Enter amount to transfer: "))
+        try:
+            amount = int(input("Enter amount to transfer: "))
+            if amount <= 0:
+                print("Amount to transfer must be a positive value.")
+                continue  # Restart the loop to prompt the user again
+            break  # Exit the loop if a valid positive integer is entered
+        except ValueError:
+            print("Invalid input. Please enter a valid integer amount.")
 
-        if amount <= 0:
-            print("Amount to transfer must be a positive value.")
-            continue  # Restart the loop to prompt the user again
+    try:
+        connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="Harshi@526",
+            database="Banking"
+        )
+        cursor = connection.cursor()
+
+        # Check if recipient exists and is a beneficiary of the sender
+        cursor.execute("SELECT * FROM beneficiaries WHERE username = %s AND name = %s", (user.username, recipient_username))
+        recipient_data = cursor.fetchone()
+        if recipient_data is None:
+            print("Recipient not found or not a beneficiary.")
+            return
+
+        if user.balance < amount:
+            print("Insufficient funds.")
+            return
+
+        # Update sender's balance
+        cursor.execute("UPDATE users SET balance = balance - %s WHERE username = %s", (amount, user.username))
+
+        # Update recipient's balance
+        cursor.execute("UPDATE users SET balance = balance + %s WHERE username = %s", (amount, recipient_username))
+
+        # Commit the transaction
+        connection.commit()
+
+        # Update user object balance
+        user.balance -= amount
+
+        print(f"{amount} funds transferred successfully to {recipient_username}")
+
+    except mysql.connector.Error as error:
+        print("Error transferring funds:", error)
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+    show_options(user)
+
+def change_card_pins(username):
+    print("Which PIN would you like to change?")
+    print("1. Credit Card PIN")
+    print("2. Debit Card PIN")
+    choice = input("Enter your choice (1 or 2): ")
+
+    if choice not in ['1', '2']:
+        print("Invalid choice. Please enter 1 or 2.")
+        return
+
+    pin_type = "credit_card_pin" if choice == '1' else "debit_card_pin"
+    pin_prompt = "Credit Card" if choice == '1' else "Debit Card"
+
+    retry = 'yes'  # Initialize retry variable outside of try block
+    while True:
+        entered_pin = input(f"Enter your current PIN for {pin_prompt}: ")
 
         try:
             connection = mysql.connector.connect(
@@ -584,45 +701,73 @@ def transfer_funds(user):
             )
             cursor = connection.cursor()
 
-            # Check if recipient exists and is a beneficiary of the sender
-            cursor.execute("SELECT * FROM beneficiaries WHERE username = %s AND name = %s", (user.username, recipient_username))
-            recipient_data = cursor.fetchone()
-            if recipient_data is None:
-                print("Recipient not found or not a beneficiary.")
+            sql = f"SELECT {pin_type} FROM users WHERE username = %s"
+            cursor.execute(sql, (username,))
+            result = cursor.fetchone()
+
+            if result is None:
+                print(f"No {pin_prompt} PIN found for the user.")
+                return
+
+            hashed_pin = result[0]
+
+            if hash_pin(entered_pin) != hashed_pin:
+                print("Invalid PIN. Please enter your current PIN.")
                 retry = input("Do you want to retry? (yes/no): ").lower()
                 if retry != 'yes':
-                    break
-                continue
-            if user.balance < amount:
-                print("Insufficient funds.")
-                retry = input("Do you want to retry? (yes/no): ").lower()
-                if retry != 'yes':
-                    break
-                continue
-
-            # Update sender's balance
-            cursor.execute("UPDATE users SET balance = balance - %s WHERE username = %s", (amount, user.username))
-
-            # Update recipient's balance
-            cursor.execute("UPDATE users SET balance = balance + %s WHERE username = %s", (amount, recipient_username))
-
-            # Commit the transaction
-            connection.commit()
-
-            # Update user object balance
-            user.balance -= amount
-
-            print(f"{amount} funds transferred successfully to {recipient_username}")
-            break
+                    break  # Exit the loop and function if user chooses not to retry
+            else:
+                break
 
         except mysql.connector.Error as error:
-            print("Error transferring funds:", error)
+            print(f"Error while fetching {pin_prompt} PIN:", error)
+            return
         finally:
             if connection.is_connected():
                 cursor.close()
                 connection.close()
 
-    show_options(user)
+    # Only proceed to the next steps if the loop was exited without breaking
+    if retry == 'yes':
+        while True:
+            confirm_pin = input(f"Please confirm your current PIN for {pin_prompt}: ")
+
+            if hash_pin(confirm_pin) != hashed_pin:
+                print(f"{pin_prompt} PIN confirmation failed.")
+                retry = input("Do you want to retry? (yes/no): ").lower()
+                if retry != 'yes':
+                    break
+            else:
+                break
+
+        if retry == 'yes':
+            new_pin = input(f"Enter new PIN for {pin_prompt}: ")
+
+            try:
+                hashed_new_pin = hash_pin(new_pin)
+
+                connection = mysql.connector.connect(
+                    host="localhost",
+                    user="root",
+                    password="Harshi@526",
+                    database="Banking"
+                )
+                cursor = connection.cursor()
+
+                sql = f"UPDATE users SET {pin_type} = %s WHERE username = %s"
+                val = (hashed_new_pin, username)
+                cursor.execute(sql, val)
+                connection.commit()
+                print(f"{pin_prompt} PIN updated successfully!")
+
+            except mysql.connector.Error as error:
+                print(f"Error while updating {pin_prompt} PIN:", error)
+            finally:
+                if connection.is_connected():
+                    cursor.close()
+                    connection.close()
+    else:
+        print("Returning to the options menu.")
 
 def register_new_credit_card(user):
     print("Register New Credit Card:")
@@ -680,10 +825,11 @@ def show_options(user):
     print("4. Add Beneficiary")
     print("5. Update Account Information")
     print("6. Transfer Funds")
-    print("7. Reset PIN")
-    print("8. Reset CVV")
-    print("9. Register New Cards")
-    print("10. Logout")
+    print("7. Change_card_pins")
+    print("8. Reset PIN")
+    print("9. Reset CVV")
+    print("10. Register New Cards")
+    print("11. Logout")
     choice = input("Enter your choice: ")
 
     if choice == '1':
@@ -699,12 +845,14 @@ def show_options(user):
     elif choice == '6':
         transfer_funds(user)
     elif choice == '7':
-        reset_pin(user)
+        change_card_pins(user.username)
     elif choice == '8':
-        reset_cvv(user)
+        reset_pin(user)
     elif choice == '9':
-        register_new_credit_card(user)
+        reset_cvv(user)
     elif choice == '10':
+        register_new_credit_card(user)
+    elif choice == '11':
         print("Logged out successfully.")
     else:
         print("Invalid choice.")
