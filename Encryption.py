@@ -282,12 +282,16 @@ def show_account_info(user):
 def initial_deposit(user):
     try:
         while True:
-            deposit_amount = int(input("Enter initial deposit amount: "))
-            if deposit_amount < 0:
-                print("Deposit amount cannot be negative. Please enter a positive value.")
-            else:
-                break  # Exit the loop if a positive value is entered
-
+            deposit_amount_str = input("Enter initial deposit amount: ")
+            try:
+                deposit_amount = int(deposit_amount_str)
+                if deposit_amount < 0:
+                    print("Deposit amount cannot be negative. Please enter a positive value.")
+                else:
+                    break  # Exit the loop if a valid positive integer is entered
+            except ValueError:
+                print("Invalid input. Please enter a valid integer amount.")
+        
         connection = mysql.connector.connect(
             host="localhost",
             user="root",
@@ -296,18 +300,19 @@ def initial_deposit(user):
         )
         cursor = connection.cursor()
 
-        # Update the user's balance in the database
-        cursor.execute("UPDATE users SET balance = balance + %s WHERE username = %s", (deposit_amount, user.username))
+        # Update user's balance with the initial deposit
+        cursor.execute("UPDATE users SET balance = %s WHERE username = %s", (deposit_amount, user.username))
         connection.commit()
         print(f"Your account has been credited with {deposit_amount}. New balance is {user.balance + deposit_amount}.")
 
-        # Update the user object's balance attribute
+
+        # Update user object balance
         user.balance += deposit_amount
 
     except mysql.connector.Error as error:
-        print("Error while making the initial deposit:", error)
+        print("Error making the initial deposit:", error)
     finally:
-        if 'connection' in locals() and connection.is_connected():
+        if connection.is_connected():
             cursor.close()
             connection.close()
 
@@ -620,61 +625,62 @@ def show_updated_account_info(user):
 
 def transfer_funds(user):
     print("Transfer Funds:")
-    recipient_username = input("Enter recipient's username: ")
-    
     while True:
+        recipient_username = input("Enter recipient's username: ")
+        amount = int(input("Enter amount to transfer: "))
+
+        if amount <= 0:
+            print("Amount to transfer must be a positive value.")
+            continue  # Restart the loop to prompt the user again
+
         try:
-            amount = int(input("Enter amount to transfer: "))
-            if amount <= 0:
-                print("Amount to transfer must be a positive value.")
-                continue  # Restart the loop to prompt the user again
-            break  # Exit the loop if a valid positive integer is entered
-        except ValueError:
-            print("Invalid input. Please enter a valid integer amount.")
+            connection = mysql.connector.connect(
+                host="localhost",
+                user="root",
+                password="Harshi@526",
+                database="Banking"
+            )
+            cursor = connection.cursor()
 
-    try:
-        connection = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="Harshi@526",
-            database="Banking"
-        )
-        cursor = connection.cursor()
+            # Check if recipient exists and is a beneficiary of the sender
+            cursor.execute("SELECT * FROM beneficiaries WHERE username = %s AND name = %s", (user.username, recipient_username))
+            recipient_data = cursor.fetchone()
+            if recipient_data is None:
+                print("Recipient not found or not a beneficiary.")
+                retry = input("Do you want to retry? (yes/no): ").lower()
+                if retry != 'yes':
+                    break
+                continue
+            if user.balance < amount:
+                print("Insufficient funds.")
+                retry = input("Do you want to retry? (yes/no): ").lower()
+                if retry != 'yes':
+                    break
+                continue
 
-        # Check if recipient exists and is a beneficiary of the sender
-        cursor.execute("SELECT * FROM beneficiaries WHERE username = %s AND name = %s", (user.username, recipient_username))
-        recipient_data = cursor.fetchone()
-        if recipient_data is None:
-            print("Recipient not found or not a beneficiary.")
-            return
+            # Update sender's balance
+            cursor.execute("UPDATE users SET balance = balance - %s WHERE username = %s", (amount, user.username))
 
-        if user.balance < amount:
-            print("Insufficient funds.")
-            return
+            # Update recipient's balance
+            cursor.execute("UPDATE users SET balance = balance + %s WHERE username = %s", (amount, recipient_username))
 
-        # Update sender's balance
-        cursor.execute("UPDATE users SET balance = balance - %s WHERE username = %s", (amount, user.username))
+            # Commit the transaction
+            connection.commit()
 
-        # Update recipient's balance
-        cursor.execute("UPDATE users SET balance = balance + %s WHERE username = %s", (amount, recipient_username))
+            # Update user object balance
+            user.balance -= amount
 
-        # Commit the transaction
-        connection.commit()
+            print(f"{amount} funds transferred successfully to {recipient_username}")
+            break
 
-        # Update user object balance
-        user.balance -= amount
-
-        print(f"{amount} funds transferred successfully to {recipient_username}")
-
-    except mysql.connector.Error as error:
-        print("Error transferring funds:", error)
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
+        except mysql.connector.Error as error:
+            print("Error transferring funds:", error)
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
 
     show_options(user)
-
 def change_card_pins(username):
     print("Which PIN would you like to change?")
     print("1. Credit Card PIN")
